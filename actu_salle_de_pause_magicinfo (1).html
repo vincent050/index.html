@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="1800">
+<title>Actualités - Salle de pause</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;background:#10151c;color:#fff;overflow:hidden}
+body{display:flex;flex-direction:column}
+header{height:12vh;display:flex;align-items:center;justify-content:space-between;padding:0 2.5vw;background:#17202b;border-bottom:3px solid #4da3ff}
+.logo{font-size:clamp(28px,3vw,52px);font-weight:700}
+.date{font-size:clamp(20px,2vw,34px);opacity:.9}
+main{height:78vh;display:grid;grid-template-columns:1.45fr 1fr;gap:1.5vw;padding:1.5vw}
+.panel{background:#18222e;border-radius:18px;padding:1.3vw;overflow:hidden}
+.title{font-size:clamp(24px,2.3vw,42px);font-weight:700;margin-bottom:1vw;border-bottom:2px solid #405264;padding-bottom:.6vw}
+.news{height:calc(100% - 4.2vw);overflow:hidden}
+.item{padding:.75vw 0;border-bottom:1px solid #344352}
+.item h3{font-size:clamp(20px,1.65vw,32px);margin:0 0 .3vw;line-height:1.12}
+.item p{font-size:clamp(14px,1.1vw,22px);margin:0;opacity:.72}
+.weather{display:flex;flex-direction:column;justify-content:space-between;height:calc(100% - 4.2vw)}
+.current{display:flex;align-items:center;gap:1vw}
+.temp{font-size:clamp(55px,6vw,105px);font-weight:700}
+.wicon{font-size:clamp(55px,5vw,90px)}
+.condition{font-size:clamp(20px,1.8vw,34px)}
+.forecast{display:grid;grid-template-columns:repeat(4,1fr);gap:.7vw}
+.day{background:#222e3b;border-radius:12px;padding:.7vw;text-align:center}
+.day b{font-size:clamp(15px,1.3vw,25px)}
+.day .emoji{font-size:clamp(25px,2.2vw,40px);margin:.35vw}
+.day span{font-size:clamp(13px,1.05vw,20px)}
+footer{height:10vh;background:#0c1117;display:flex;align-items:center;overflow:hidden;white-space:nowrap}
+.ticker{font-size:clamp(20px,2vw,34px);padding-left:100%;animation:scroll 45s linear infinite}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+.small{opacity:.65;font-size:.9em}
+.error{opacity:.7;font-size:20px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">📰 ACTUALITÉS — SALLE DE PAUSE</div>
+  <div class="date" id="clock">--:--</div>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="title">🇫🇷 ACTUALITÉ FRANCE</div>
+    <div class="news" id="france"><div class="error">Chargement des actualités…</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="title">📍 ACTUALITÉ MANCHE</div>
+    <div class="news" id="manche"><div class="error">Chargement des actualités…</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="title">🌤️ MÉTÉO — SECTEUR CARENTAN</div>
+    <div class="weather">
+      <div>
+        <div class="current">
+          <div class="wicon" id="wicon">⛅</div>
+          <div>
+            <div class="temp" id="temp">--°</div>
+            <div class="condition" id="condition">Chargement…</div>
+          </div>
+        </div>
+        <div class="small" id="wind">Vent : --</div>
+      </div>
+      <div class="forecast" id="forecast"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="title">📰 À LA UNE</div>
+    <div class="news" id="une"><div class="error">Les titres principaux s'afficheront ici.</div></div>
+  </section>
+</main>
+
+<footer><div class="ticker" id="ticker">Bienvenue dans votre espace pause — Actualités et météo mises à jour automatiquement</div></footer>
+
+<script>
+const rss = "https://api.rss2json.com/v1/api.json?rss_url=";
+const feeds = {
+ france: "https://news.google.com/rss/search?q=France%20actualit%C3%A9%20when%3A1d&hl=fr&gl=FR&ceid=FR%3Afr",
+ manche: "https://news.google.com/rss/search?q=Manche%20Carentan%20Normandie%20when%3A2d&hl=fr&gl=FR&ceid=FR%3Afr"
+};
+
+function clean(s){
+  const d=document.createElement("div"); d.innerHTML=s||"";
+  return d.textContent.replace(/\s+/g," ").trim();
+}
+function showNews(id,items,max=5){
+  const el=document.getElementById(id);
+  el.innerHTML="";
+  items.slice(0,max).forEach(x=>{
+    const div=document.createElement("div"); div.className="item";
+    div.innerHTML=`<h3>${clean(x.title)}</h3><p>${new Date(x.pubDate).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})} · ${clean(x.description).slice(0,150)}</p>`;
+    el.appendChild(div);
+  });
+}
+async function loadFeed(url,id){
+  try{
+    const r=await fetch(rss+encodeURIComponent(url));
+    const j=await r.json();
+    if(j.status==="ok") showNews(id,j.items,5);
+  }catch(e){document.getElementById(id).innerHTML='<div class="error">Actualités momentanément indisponibles.</div>';}
+}
+async function loadWeather(){
+  try{
+    const url="https://api.open-meteo.com/v1/forecast?latitude=49.303&longitude=-1.247&current=temperature_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FParis&forecast_days=5";
+    const j=await (await fetch(url)).json();
+    document.getElementById("temp").textContent=Math.round(j.current.temperature_2m)+"°";
+    document.getElementById("wind").textContent="Vent : "+Math.round(j.current.wind_speed_10m)+" km/h";
+    const map={0:["☀️","Ciel dégagé"],1:["🌤️","Peu nuageux"],2:["⛅","Partiellement nuageux"],3:["☁️","Couvert"],45:["🌫️","Brouillard"],48:["🌫️","Brouillard givrant"],51:["🌦️","Bruine"],53:["🌦️","Bruine"],55:["🌧️","Bruine"],61:["🌦️","Pluie faible"],63:["🌧️","Pluie"],65:["🌧️","Forte pluie"],71:["🌨️","Neige"],73:["🌨️","Neige"],75:["❄️","Neige"],80:["🌦️","Averses"],81:["🌧️","Averses"],82:["🌧️","Fortes averses"],95:["⛈️","Orage"],96:["⛈️","Orage"],99:["⛈️","Orage"]};
+    const cur=map[j.current.weather_code]||["🌤️","Variable"];
+    document.getElementById("wicon").textContent=cur[0];
+    document.getElementById("condition").textContent=cur[1];
+    document.getElementById("forecast").innerHTML=j.daily.time.map((d,i)=>{
+      const m=map[j.daily.weather_code[i]]||["🌤️","Variable"];
+      const day=new Date(d).toLocaleDateString("fr-FR",{weekday:"short"}).replace(".","");
+      return `<div class="day"><b>${day}</b><div class="emoji">${m[0]}</div><span>${Math.round(j.daily.temperature_2m_max[i])}° / ${Math.round(j.daily.temperature_2m_min[i])}°</span></div>`;
+    }).join("");
+  }catch(e){document.getElementById("condition").textContent="Météo indisponible";}
+}
+function clock(){
+  const n=new Date();
+  document.getElementById("clock").textContent=n.toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"long"})+" · "+n.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+}
+async function refresh(){
+  await Promise.all([loadFeed(feeds.france,"france"),loadFeed(feeds.manche,"manche"),loadWeather()]);
+  loadFeed(feeds.france,"une");
+  document.getElementById("ticker").textContent="Dernière mise à jour : "+new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})+" · Actualités France · Manche · Météo Carentan";
+}
+clock(); setInterval(clock,1000);
+refresh(); setInterval(refresh,15*60*1000);
+</script>
+</body>
+</html>
